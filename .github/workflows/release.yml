@@ -24,7 +24,7 @@ jobs:
 
       - name: Prepare release asset
         run: |
-          cp target/wasm32-wasip1/release/libenvoy_ndjson_to_sse.so envoy-ndjson-to-sse.wasm
+          cp target/wasm32-wasip1/release/envoy_ndjson_to_sse.wasm envoy-ndjson-to-sse.wasm
           VERSION="${GITHUB_REF#refs/tags/}"
           mv envoy-ndjson-to-sse.wasm "envoy-ndjson-to-sse-${VERSION}.wasm"
           echo "ASSET_NAME=envoy-ndjson-to-sse-${VERSION}.wasm" >> $GITHUB_ENV

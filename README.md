@@ -18,7 +18,7 @@ rustup target add wasm32-wasip1
 cargo build --target wasm32-wasip1 --release
 ```
 
-Output: `target/wasm32-wasip1/release/libenvoy_ndjson_to_sse.so` (WASM binary despite the `.so` extension).
+Output: `target/wasm32-wasip1/release/envoy_ndjson_to_sse.wasm`
 
 ## Download pre-built WASM
 

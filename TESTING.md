@@ -19,7 +19,7 @@ Run the filter in Envoy, request a backend that returns NDJSON, and verify that 
 - **Envoy**: Binary with WASM extension support (e.g. official images `envoyproxy/envoy` or `envoyproxy/envoy-dev`).
 - **WASM file**:  
   `cargo build --target wasm32-wasip1 --release`  
-  → `target/wasm32-wasip1/release/libenvoy_ndjson_to_sse.so` (the `.so` extension is still a WASM binary).
+  → `target/wasm32-wasip1/release/envoy_ndjson_to_sse.wasm`.
 
 ### Example Setup
 
@@ -58,7 +58,7 @@ static_resources:
                           runtime: envoy.wasm.runtimes.v8
                           code:
                             local:
-                              filename: /path/to/libenvoy_ndjson_to_sse.so  # Path to WASM file
+                              filename: /path/to/envoy_ndjson_to_sse.wasm  # Path to WASM file
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
