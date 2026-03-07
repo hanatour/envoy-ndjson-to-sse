@@ -56,4 +56,4 @@ Point the route to a backend that returns NDJSON (e.g. `Content-Type: applicatio
 
 ## License
 
-See repository license.
+MIT License. See [LICENSE](LICENSE).
