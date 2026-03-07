@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+
+      - name: Build WASM
+        run: cargo build --target wasm32-wasip1 --release
+
+      - name: Prepare release asset
+        run: |
+          cp target/wasm32-wasip1/release/libenvoy_ndjson_to_sse.so envoy-ndjson-to-sse.wasm
+          VERSION="${GITHUB_REF#refs/tags/}"
+          mv envoy-ndjson-to-sse.wasm "envoy-ndjson-to-sse-${VERSION}.wasm"
+          echo "ASSET_NAME=envoy-ndjson-to-sse-${VERSION}.wasm" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: envoy-ndjson-to-sse-*.wasm
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm32-wasip1
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Build WASM
+        run: cargo build --target wasm32-wasip1 --release
+
+      - name: Rename artifact to .wasm
+        run: |
+          cp target/wasm32-wasip1/release/libenvoy_ndjson_to_sse.so envoy-ndjson-to-sse.wasm
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: envoy-ndjson-to-sse-wasm
+          path: envoy-ndjson-to-sse.wasm
+          retention-days: 90

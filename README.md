@@ -20,6 +20,14 @@ cargo build --target wasm32-wasip1 --release
 
 Output: `target/wasm32-wasip1/release/libenvoy_ndjson_to_sse.so` (WASM binary despite the `.so` extension).
 
+## Download pre-built WASM
+
+- **Releases**: For each [release](https://github.com/hanatour/envoy-ndjson-to-sse/releases) (e.g. `v0.1.0`), download `envoy-ndjson-to-sse-<version>.wasm` from the release assets. Create a release by pushing a tag:
+  ```bash
+  git tag v0.1.0 && git push origin v0.1.0
+  ```
+- **CI artifacts**: The [Actions](https://github.com/hanatour/envoy-ndjson-to-sse/actions) workflow builds on every push to `master`. Open the latest successful run → **Summary** → download the `envoy-ndjson-to-sse-wasm` artifact (contains `envoy-ndjson-to-sse.wasm`).
+
 ## Envoy Configuration
 
 Use the filter in the HTTP connection manager. Example snippet:
@@ -36,7 +44,7 @@ http_filters:
           runtime: envoy.wasm.runtimes.v8
           code:
             local:
-              filename: /path/to/envoy_ndjson_to_sse.wasm
+              filename: /path/to/envoy-ndjson-to-sse.wasm
   - name: envoy.filters.http.router
     typed_config:
       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
