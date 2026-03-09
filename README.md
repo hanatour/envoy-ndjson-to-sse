@@ -4,7 +4,8 @@ An Envoy proxy WASM filter that converts NDJSON (Newline Delimited JSON) respons
 
 ## Behavior
 
-- **Response headers**: Sets `Content-Type: text/event-stream` and removes `Content-Length`.
+- **Condition**: The filter runs only when the response `Content-Type` is NDJSON: `application/x-ndjson`, `application/ndjson`, or `x-ndjson` (parameters like `; charset=utf-8` are ignored). Other responses pass through unchanged.
+- **Response headers**: When transforming, sets `Content-Type: text/event-stream` and removes `Content-Length`.
 - **Body**: Each non-empty NDJSON line is emitted as one SSE event: `data: <trimmed-line>\n\n`.
 - **Streaming**: Handles chunked response bodies; incomplete lines are buffered until a newline or end-of-stream.
 - **Empty lines**: Lines that are empty or only whitespace are skipped.

@@ -12,6 +12,8 @@ proxy_wasm::main! {{
 #[derive(Default)]
 struct NdjsonSseFilter {
     buffer: Vec<u8>,
+    /// When true, response Content-Type was NDJSON and we transform to SSE; otherwise pass through.
+    transform: bool,
 }
 
 impl Context for NdjsonSseFilter {}
@@ -25,9 +27,13 @@ impl HttpContext for NdjsonSseFilter {
     ) -> Action {
 
         trace!(
-            "on_http_response_body body_size={} end_of_stream={}",
-            body_size, end_of_stream
+            "on_http_response_body body_size={} end_of_stream={} transform={}",
+            body_size, end_of_stream, self.transform
         );
+
+        if !self.transform {
+            return Action::Continue;
+        }
 
         let chunk = self.get_http_response_body(0, body_size);
         let buffer = std::mem::take(&mut self.buffer);
@@ -45,11 +51,25 @@ impl HttpContext for NdjsonSseFilter {
 
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
 
-        self.set_http_response_header("content-type", Some("text/event-stream"));
-        self.remove_http_response_header("content-length");
+        let content_type = self
+            .get_http_response_header("content-type")
+            .unwrap_or_default();
+        self.transform = is_ndjson_content_type(content_type.trim());
+
+        if self.transform {
+            self.set_http_response_header("content-type", Some("text/event-stream"));
+            self.remove_http_response_header("content-length");
+        }
 
         Action::Continue
     }
+}
+
+/// Returns true if the given Content-Type value indicates NDJSON (e.g. application/x-ndjson).
+fn is_ndjson_content_type(content_type: &str) -> bool {
+    let lower = content_type.to_lowercase();
+    let base = lower.split(';').next().unwrap_or("").trim();
+    base == "application/x-ndjson" || base == "application/ndjson" || base == "x-ndjson"
 }
 
 /// Convert one NDJSON line (no trailing \n) to SSE format: "data: {trimmed}\n\n"
@@ -109,7 +129,7 @@ pub(crate) fn process_ndjson_body_chunk(
 
 #[cfg(test)]
 mod tests {
-    use super::{line_to_sse, process_ndjson_body_chunk};
+    use super::{is_ndjson_content_type, line_to_sse, process_ndjson_body_chunk};
 
     /// Same as one on_http_response_body call: (buffer, chunk, end_of_stream) → (output for this call, new buffer).
     fn one_call(buffer: Vec<u8>, chunk: Option<&[u8]>, end_of_stream: bool) -> (Vec<u8>, Vec<u8>) {
@@ -145,6 +165,58 @@ mod tests {
             out.extend_from_slice(&sse_line(s));
         }
         out
+    }
+
+    #[test]
+    fn ndjson_content_type_application_x_ndjson() {
+        assert!(is_ndjson_content_type("application/x-ndjson"));
+        assert!(is_ndjson_content_type("Application/X-NDJSON"));
+        assert!(is_ndjson_content_type("  application/x-ndjson  "));
+        assert!(is_ndjson_content_type("application/x-ndjson; charset=utf-8"));
+    }
+
+    #[test]
+    fn ndjson_content_type_application_ndjson() {
+        assert!(is_ndjson_content_type("application/ndjson"));
+        assert!(is_ndjson_content_type("application/ndjson; charset=utf-8"));
+    }
+
+    #[test]
+    fn ndjson_content_type_x_ndjson() {
+        assert!(is_ndjson_content_type("x-ndjson"));
+    }
+
+    #[test]
+    fn not_ndjson_content_type() {
+        assert!(!is_ndjson_content_type("application/json"));
+        assert!(!is_ndjson_content_type("text/plain"));
+        assert!(!is_ndjson_content_type(""));
+    }
+
+    #[test]
+    fn not_ndjson_content_type_other_common_types() {
+        assert!(!is_ndjson_content_type("text/html"));
+        assert!(!is_ndjson_content_type("text/event-stream"));
+        assert!(!is_ndjson_content_type("application/octet-stream"));
+        assert!(!is_ndjson_content_type("application/xml"));
+        assert!(!is_ndjson_content_type("multipart/form-data; boundary=----"));
+    }
+
+    #[test]
+    fn not_ndjson_content_type_similar_but_not_equal() {
+        // Must match exactly, not by substring.
+        assert!(!is_ndjson_content_type("application/x-ndjson2"));
+        assert!(!is_ndjson_content_type("application/x-ndjson-something"));
+        assert!(!is_ndjson_content_type("text/ndjson"));
+        assert!(!is_ndjson_content_type("application/ndjsonlines"));
+        assert!(!is_ndjson_content_type("application/vnd.ndjson"));
+    }
+
+    #[test]
+    fn not_ndjson_content_type_empty_or_whitespace() {
+        assert!(!is_ndjson_content_type(""));
+        assert!(!is_ndjson_content_type("   "));
+        assert!(!is_ndjson_content_type("\t"));
     }
 
     #[test]
